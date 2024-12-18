@@ -7,6 +7,10 @@ from statsbombpy import sb
 from typing import List
 import requests 
 
+from langchain.prompts import PromptTemplate
+from langchain.chains import LLMChain
+from langchain_google_genai import GoogleGenerativeAI
+
 
 class PlayerStatsError(Exception):
     def __init__(self, message):
@@ -16,6 +20,52 @@ class PlayerStatsError(Exception):
 
 def to_json(df: pd.DataFrame) -> str:
     return json.dumps(df, indent=2)
+
+
+
+def generate_narrative(events: dict, style: str) -> str:
+    """
+    Generate a narrative based on match events and a chosen style.
+
+    Args:
+        events (dict): Dictionary containing match events (goals, assists, cards).
+        style (str): The chosen style of narration ('formal', 'humoristic', 'technical').
+
+    Returns:
+        str: JSON string containing the generated narrative.
+    """
+    styles = {
+        "formal": "Create a formal narrative that is technical and objective.",
+        "humoristic": "Create a humorous and creative narrative.",
+        "technical": "Create a detailed technical analysis of the match events."
+    }
+
+    if style not in styles:
+        raise ValueError("Invalid style. Choose from: 'formal', 'humoristic', 'technical'.")
+
+    # Prepare the prompt
+    prompt_template = """
+    You are a sports commentator. Your task is to create a narrative based on the following match events:
+    {events}
+
+    Style: {style_description}
+
+    Create a captivating narrative based on the style.
+    """
+    
+    prompt = PromptTemplate(
+        input_variables=["events", "style_description"],
+        template=prompt_template
+    )
+
+    llm = GoogleGenerativeAI(model="gemini-pro", temperature=0.7)
+    chain = LLMChain(llm=llm, prompt=prompt)
+
+    # Generate narrative
+    narrative = chain.run(events=json.dumps(events, indent=2), style_description=styles[style])
+
+    # Return the narrative as JSON
+    return to_json({"narrative": narrative})
 
 
 def get_events(match_id: int) -> str:

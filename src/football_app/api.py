@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from src.football_app.football_stats.matches import get_main_events, get_player_profile
+from src.football_app.football_stats.matches import get_main_events, get_player_profile, generate_narrative
 import json 
 
 
@@ -31,6 +31,13 @@ class PlayerProfileResponse(BaseModel):
     fouls_committed: int
     minutes_played: int
 
+class NarrativeRequest(BaseModel):
+    match_id: int
+    style: str
+
+class NarrativeResponse(BaseModel):
+    narrative: str
+
 # Endpoint: /match_summary
 @app.post("/match_summary", response_model=MatchSummaryResponse)
 def match_summary(request: MatchSummaryRequest):
@@ -54,3 +61,21 @@ def player_profile(request: PlayerProfileRequest):
         return profile_dict
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/match_narrative", response_model=NarrativeResponse)
+def match_narrative(request: NarrativeRequest):
+    try:
+        # Obter os eventos principais da partida
+        events_json = get_main_events(request.match_id)
+        events_dict = json.loads(events_json)
+
+        # Gerar a narrativa
+        narrative_json = generate_narrative(events=events_dict, style=request.style)
+        narrative_dict = json.loads(narrative_json)
+
+        return narrative_dict
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

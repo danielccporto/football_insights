@@ -7,6 +7,7 @@ from langchain.schema import AIMessage, HumanMessage
 from langchain_community.callbacks.streamlit import StreamlitCallbackHandler
 from tools.football import get_sport_specialist_comments_about_match as comments_about_a_match
 from tools.football import generate_match_summary, get_player_profile_tool
+from football_stats.matches import get_main_events, generate_narrative
 from tools import load_tools
 import json
 
@@ -196,3 +197,38 @@ if match_id:
             # Exibe o perfil do jogador
             st.subheader(f"Player Profile: {player_name}")
             st.json(player_profile)
+
+
+# Sidebar para seleção de estilo
+st.sidebar.title("Narrative Generator")
+st.sidebar.header("Select Match and Style")
+
+# Input para seleção de Match ID
+match_id = st.sidebar.number_input("Enter the Match ID", value=0, step=1, format="%d")
+
+# Input para seleção de estilo
+style = st.sidebar.selectbox(
+    "Choose Narrative Style",
+    ["formal", "humoristic", "technical"]
+)
+
+# Botão para gerar narrativa
+if st.sidebar.button("Generate Narrative"):
+    if match_id == 0:
+        st.error("Please enter a valid Match ID.")
+    else:
+        try:
+            # Obter eventos da partida
+            events_json = get_main_events(match_id)
+            events = json.loads(events_json)
+            
+            # Gerar narrativa
+            narrative_json = generate_narrative(events=events, style=style)
+            narrative = json.loads(narrative_json)
+
+            # Exibir resultado
+            st.subheader("Narrative Result")
+            st.write(narrative['narrative'])
+        
+        except Exception as e:
+            st.error(f"Error generating narrative: {e}")
