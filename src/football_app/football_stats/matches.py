@@ -5,6 +5,7 @@ import numpy as np
 from copy import copy
 from statsbombpy import sb
 from typing import List
+import requests 
 
 
 class PlayerStatsError(Exception):
@@ -72,12 +73,16 @@ def get_main_events(match_id: int) -> str:
     Returns:
         str: JSON string with main events (goals, assists, and cards).
     """
-    events = sb.events(match_id=match_id)
-    if isinstance(events, str):
-        events = pd.DataFrame(json.loads(events))
-
-    main_events = filter_main_events(events)
-    return to_json(main_events)
+    try: 
+        events = sb.events(match_id=match_id)
+        if isinstance(events, str):
+            events = pd.DataFrame(json.loads(events))
+        main_events = filter_main_events(events)
+        return to_json(main_events)
+    except requests.exceptions.RequestException as e:
+        raise Exception(f"Error fetching data from StatsBomb API: {str(e)}")
+    except Exception as e:
+        raise Exception(f"An error occurred while processing the match events: {str(e)}")
 
 
 def get_player_stats(match_id: int, player_name: str) -> str:
